@@ -2,6 +2,9 @@
 #include <GL/glut.h>
 
 #include <stdlib.h>
+#include <mutex>
+#include <queue>
+#include <utility>
 #include <math.h>
 #include <array>
 #include <vector>
@@ -9,6 +12,8 @@
 #include <iostream>
 #include <cassert>
 #include <future>
+
+#include "threadpool.hpp"
 
 template <class Int>
 class range_class
@@ -104,6 +109,15 @@ struct V3f
     }
 };
 
+const size_t sz=70;
+const float L0=1.0f/sz;
+const float L1=L0+L0;
+const float D0=sqrt(L0*L0+L0*L0);
+const float K=1000.0;
+const float KD=1000.0;
+const float MasseSurf=0.3f;
+float dt=1e-4;
+
 struct Node
 {
     using Direction = V3f;
@@ -114,17 +128,9 @@ struct Node
     Speed speed;
     Force f;
     Direction normal;
-    float masse=0.0001f;
-    float moveability=1000.0f;//mass inverse
+    float masse=MasseSurf/(sz*sz);
+    float moveability=(sz*sz)/MasseSurf;//mass inverse
 };
-
-const size_t sz=100;
-const float L0=0.01;
-const float L1=L0+L0;
-const float D0=sqrt(L0*L0+L0*L0);
-const float K=1000.0;
-const float KD=1000.0;
-float dt=1e-4;
 
 double compute_time= {};
 
@@ -152,7 +158,7 @@ static void do_resize()
     gluLookAt(camera.p[0],camera.p[1],camera.p[2], 0.0f, 0.0f,0.0f, 0,0, 1);
 
     std::cout << "camera " << camera.p[0] << " " << camera.p[1] << " " << camera.p[2] <<std::endl;
-    glutPostRedisplay();
+    //glutPostRedisplay();
 }
 
 static void resize(int width, int height)
@@ -227,20 +233,20 @@ static void display(void)
 
         auto outNode=[](const Node& n)
         {
-            glVertex3fv(n.position.p.data());
             glNormal3fv(n.normal.p.data());
+            glVertex3fv(n.position.p.data());
         };
         for(auto i : range(sz-1))
         {
             for(auto j : range(sz-1))
             {
                 outNode(napkin[i+0][j+0]);
-                outNode(napkin[i+0][j+1]);
                 outNode(napkin[i+1][j+0]);
+                outNode(napkin[i+0][j+1]);
 
                 outNode(napkin[i+1][j+1]);
-                outNode(napkin[i+1][j+0]);
                 outNode(napkin[i+0][j+1]);
+                outNode(napkin[i+1][j+0]);
             }
         }
         glEnd();
@@ -323,12 +329,18 @@ static void idle(void)
 {
     using Forces = std::array<V3f,sz*sz>;
     const auto t = glutGet(GLUT_ELAPSED_TIME);
+    std::atomic<int> num={};
 
+    const size_t tasks=8;
+    std::array<Forces*,tasks> allforcestb={};
 
-    auto doit=[](size_t m,size_t r) ->Forces *{
+    auto doit=[&allforcestb,&num](size_t m,size_t r){
         assert(r<m);
-        static thread_local Forces  forces;
-
+        static thread_local Forces * pforces={};
+        if (!pforces)
+            pforces = new Forces{};
+        Forces  &forces=*pforces;
+        allforcestb[num++]=pforces;
         const auto addForce=[&forces]( Node& n1, Node& n2,const float L0,const float K)
         {
             auto v=n2.position-n1.position;
@@ -364,29 +376,35 @@ static void idle(void)
                 addForce(napkin[j][i],napkin[j+2][i],L1,KD);
             }
         }
-        return &forces;
     };
-    const size_t tasks=2;
 
     using AllForces = std::unordered_set<Forces *> ;
     AllForces allforces;
-#if 1
+#if 0
     for(auto task : range(tasks))
-        allforces.emplace(doit(tasks,task));
+        doit(tasks,task);
 
 #else
-    std::vector<std::future<Forces *>> promises;
+    std::vector<
+    MyNamespace::ThreadPool::TaskFuture<void>
+    > promises;
 
     for(auto task : range(tasks)){
-        auto f=std::async( std::launch::async ,doit,tasks,task);
+
+
+        auto f=MyNamespace::DefaultThreadPool::submitJob(doit,tasks,task);
+//        auto f=std::async( std::launch::async ,doit,tasks,task);
         promises.emplace_back(std::move(f));
     }
 
     for(auto &p : promises){
-        p.wait();
-        allforces.emplace(p.get());
-    }
+        p.get();
+    };
 #endif
+    for(auto f:allforcestb)
+        if (f)
+            allforces.emplace(f);
+
     std::cout << "nb_threads " << allforces.size() << std::endl;
         const auto damp=exp(-1.2*dt);
         for(auto i : range(sz))
