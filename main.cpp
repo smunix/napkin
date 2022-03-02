@@ -1,6 +1,9 @@
 
 #include <GL/glut.h>
 
+#include <GL/glext.h>
+#include "glu3.h"
+
 #include <stdlib.h>
 #include <mutex>
 #include <queue>
@@ -12,7 +15,10 @@
 #include <iostream>
 #include <cassert>
 #include <future>
+#include <future>
+#include <cstring>
 
+#include "glu_complement.h"
 #include "threadpool.hpp"
 
 template <class Int>
@@ -50,7 +56,6 @@ range(Int i)
 {
     return range_class<Int>(i);
 }
-
 
 struct V3f
 {
@@ -109,14 +114,14 @@ struct V3f
     }
 };
 
-const size_t sz=70;
+const size_t sz=200;
 const float L0=1.0f/sz;
 const float L1=L0+L0;
 const float D0=sqrt(L0*L0+L0*L0);
 const float K=1000.0;
 const float KD=1000.0;
 const float MasseSurf=0.3f;
-float dt=1e-4;
+float dt=1e-4/(sz/70.0);
 
 struct Node
 {
@@ -319,6 +324,15 @@ static void key(unsigned char key, int x, int y)
         angle*=1.05;
         do_resize();
         break;
+
+    case '>':
+      dt*=1.1;
+      std::cout << "dt="<< dt << std::endl;
+      break;
+    case '<':
+      dt/=1.1;
+      std::cout << "dt="<< dt << std::endl;
+      break;
     }
 
     glutPostRedisplay();
@@ -416,7 +430,7 @@ static void idle(void)
 
                 auto &n0=napkin[0][0];
                 const auto i_f=&n-&n0;
-                V3f f(0.0f,0.0f,-9.81f*n.masse);
+                V3f f(0.0f,0.0f,9.81f*n.masse);
                 for(auto &fs:allforces){
                     auto &ff=(*fs)[i_f];
                     f+=ff;
@@ -430,7 +444,7 @@ static void idle(void)
         const auto t1 = glutGet(GLUT_ELAPSED_TIME);
         compute_time += t1-t;
 
-    if  (compute_time > draw_time *50.0)
+	if  (compute_time > draw_time *50.0) // throw a redraw if draw time is 2% of comput. time
         glutPostRedisplay();
 }
 
