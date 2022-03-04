@@ -10,3 +10,6 @@ mouse drag allow some change of point of view, + / - to zoom
 
 gravity is thrown to the top, just for fun
 
+compilation is trivial:
+
+g++ -march=native -O3 main.cpp -lglut -lGL -pthread  -o napkin 
