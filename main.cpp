@@ -87,7 +87,7 @@ struct V3f {
   }
 };
 
-const size_t sz = 100;
+const size_t sz = 200;
 const float L0 = 1.0f / sz;
 const float L1 = L0 + L0;
 const float D0 = sqrt(L0 * L0 + L0 * L0);
@@ -291,7 +291,7 @@ static void idle(void)
   const auto t = glutGet(GLUT_ELAPSED_TIME);
   std::atomic<int> num = {};
 
-  const size_t tasks = 8;
+  const size_t tasks = 20;
   std::array<Forces *, tasks> allforcestb = {};
 
   auto doit = [&allforcestb, &num](size_t m, size_t r) {
