@@ -1,18 +1,18 @@
 
 #include <GL/glut.h>
 
-#include <GL/glext.h>
 #include "glu3.h"
+#include <GL/glext.h>
 
-#include <math.h>
-#include <stdlib.h>
 #include <array>
 #include <cassert>
 #include <cstring>
 #include <future>
 #include <iostream>
+#include <math.h>
 #include <mutex>
 #include <queue>
+#include <stdlib.h>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -20,9 +20,8 @@
 #include "glu_complement.h"
 #include "threadpool.hpp"
 
-template <class Int>
-class range_class {
- public:
+template <class Int> class range_class {
+public:
   range_class(Int e) : m_end(e) {}
   range_class begin() const { return 0; }
   range_class end() const { return m_end; }
@@ -30,25 +29,27 @@ class range_class {
   Int operator*() const { return m_end; }
   bool operator!=(const range_class &e) const { return m_end < e.m_end; }
 
- private:
+private:
   Int m_end;
 };
 
-template <class Int>
-const range_class<Int> range(Int i) {
+template <class Int> const range_class<Int> range(Int i) {
   return range_class<Int>(i);
 }
 
 struct V3f {
   std::array<float, 3> p = {};
   void operator+=(const V3f &rhs) {
-    for (auto i : range(p.size())) p[i] += rhs.p[i];
+    for (auto i : range(p.size()))
+      p[i] += rhs.p[i];
   }
   void operator-=(const V3f &rhs) {
-    for (auto i : range(p.size())) p[i] -= rhs.p[i];
+    for (auto i : range(p.size()))
+      p[i] -= rhs.p[i];
   }
   void operator*=(const float rhs) {
-    for (auto i : range(p.size())) p[i] *= rhs;
+    for (auto i : range(p.size()))
+      p[i] *= rhs;
   }
   V3f operator-(const V3f &rhs) const {
     V3f r(*this);
@@ -67,7 +68,8 @@ struct V3f {
   }
   auto square() const {
     auto s = float{};
-    for (auto i : range(p.size())) s += p[i] * p[i];
+    for (auto i : range(p.size()))
+      s += p[i] * p[i];
     return s;
   }
   auto len() const { return sqrtf(square()); }
@@ -104,7 +106,7 @@ struct Node {
   Force f;
   Direction normal;
   float masse = MasseSurf / (sz * sz);
-  float moveability = (sz * sz) / MasseSurf;  // mass inverse
+  float moveability = (sz * sz) / MasseSurf; // mass inverse
 };
 
 double compute_time = {};
@@ -149,7 +151,8 @@ void build_norm() {
     n3.normal += n;
   };
   for (auto i : range(sz))
-    for (auto j : range(sz)) napkin[i][j].normal = V3f{};
+    for (auto j : range(sz))
+      napkin[i][j].normal = V3f{};
   for (auto i : range(sz - 1)) {
     for (auto j : range(sz - 1)) {
       addnorm(napkin[i + 0][j + 0], napkin[i + 0][j + 1], napkin[i + 1][j + 0]);
@@ -252,29 +255,29 @@ void mouse(int button, int state, int x, int y) {
 
 static void key(unsigned char key, int x, int y) {
   switch (key) {
-    case 27:
-    case 'q':
-      exit(0);
-      break;
+  case 27:
+  case 'q':
+    exit(0);
+    break;
 
-    case '+':
-      angle /= 1.05;
-      do_resize();
-      break;
+  case '+':
+    angle /= 1.05;
+    do_resize();
+    break;
 
-    case '-':
-      angle *= 1.05;
-      do_resize();
-      break;
+  case '-':
+    angle *= 1.05;
+    do_resize();
+    break;
 
-    case '>':
-      dt *= 1.1;
-      std::cout << "dt=" << dt << std::endl;
-      break;
-    case '<':
-      dt /= 1.1;
-      std::cout << "dt=" << dt << std::endl;
-      break;
+  case '>':
+    dt *= 1.1;
+    std::cout << "dt=" << dt << std::endl;
+    break;
+  case '<':
+    dt /= 1.1;
+    std::cout << "dt=" << dt << std::endl;
+    break;
   }
 
   glutPostRedisplay();
@@ -294,7 +297,8 @@ static void idle(void)
   auto doit = [&allforcestb, &num](size_t m, size_t r) {
     assert(r < m);
     static thread_local Forces *pforces = {};
-    if (!pforces) pforces = new Forces{};
+    if (!pforces)
+      pforces = new Forces{};
     Forces &forces = *pforces;
     allforcestb[num++] = pforces;
     const auto addForce = [&forces](Node &n1, Node &n2, const float L0,
@@ -337,7 +341,7 @@ static void idle(void)
         doit(tasks,task);
 
 #else
-  std::vector<MyNamespace::ThreadPool::TaskFuture<void> > promises;
+  std::vector<MyNamespace::ThreadPool::TaskFuture<void>> promises;
 
   for (auto task : range(tasks)) {
     auto f = MyNamespace::DefaultThreadPool::submitJob(doit, tasks, task);
@@ -350,7 +354,8 @@ static void idle(void)
   };
 #endif
   for (auto f : allforcestb)
-    if (f) allforces.emplace(f);
+    if (f)
+      allforces.emplace(f);
 
   std::cout << "nb_threads " << allforces.size() << std::endl;
 
@@ -378,7 +383,7 @@ static void idle(void)
       }
   };
   {
-    std::vector<MyNamespace::ThreadPool::TaskFuture<void> > promises;
+    std::vector<MyNamespace::ThreadPool::TaskFuture<void>> promises;
 
     for (auto task : range(tasks)) {
       auto f = MyNamespace::DefaultThreadPool::submitJob(step, tasks, task);
@@ -397,7 +402,7 @@ static void idle(void)
   compute_time += t1 - t;
 
   if (compute_time >
-      draw_time * 50.0)  // throw a redraw if draw time is 2% of comput. time
+      draw_time * 50.0) // throw a redraw if draw time is 2% of comput. time
     glutPostRedisplay();
 }
 
@@ -416,8 +421,8 @@ const GLfloat high_shininess[] = {100.0f};
 int main(int argc, char *argv[]) {
   glutInit(&argc, argv);
 
-  for(int i=1;i<argc;i++)
-    tasks=atoi(argv[i]);
+  for (int i = 1; i < argc; i++)
+    tasks = atoi(argv[i]);
   glutInitWindowSize(640, 480);
   glutInitWindowPosition(10, 10);
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -459,10 +464,11 @@ int main(int argc, char *argv[]) {
       auto &n = napkin[i][j];
       n.position.p[0] = i * L0;
       n.position.p[1] = j * L0;
-      if ((n.position - c).len() < 0.2) n.moveability = 0.0;
+      if ((n.position - c).len() < 0.2)
+        n.moveability = 0.0;
     }
-  //    napkin[0][0].moveability=0.0;
-  //    napkin[sz-1][0].moveability=0.0;
+  napkin[0][0].moveability = 0.0;
+  napkin[sz - 1][0].moveability = 0.0;
 
   glutMainLoop();
 
