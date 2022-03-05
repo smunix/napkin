@@ -280,6 +280,8 @@ static void key(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
+size_t tasks = 8;
+
 static void idle(void)
 
 {
@@ -287,8 +289,7 @@ static void idle(void)
   const auto t = glutGet(GLUT_ELAPSED_TIME);
   std::atomic<int> num = {};
 
-  const size_t tasks = 8;
-  std::array<Forces *, tasks> allforcestb = {};
+  std::vector<Forces *> allforcestb{tasks};
 
   auto doit = [&allforcestb, &num](size_t m, size_t r) {
     assert(r < m);
@@ -414,6 +415,9 @@ const GLfloat high_shininess[] = {100.0f};
 
 int main(int argc, char *argv[]) {
   glutInit(&argc, argv);
+
+  for(int i=1;i<argc;i++)
+    tasks=atoi(argv[i]);
   glutInitWindowSize(640, 480);
   glutInitWindowPosition(10, 10);
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
